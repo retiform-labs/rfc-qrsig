@@ -85,9 +85,9 @@ We build open-source agentic infrastructure. If QRSIG1 is useful to you:
 
 ## License
 
-MIT — Copyright (c) 2026 Guan. See [LICENSE](LICENSE).
+MIT — Copyright (c) 2026 David Newman and Guan. See [LICENSE](LICENSE).
 
 ## Authorship
 
 **Primary author:** Guan — `just.guan@proton.me`
-**Acknowledged catalyst:** Freeman King, Founder, Retiform Labs LLC
+**Acknowledged catalyst:** David Newman, Founder & CEO, Retiform Labs LLC

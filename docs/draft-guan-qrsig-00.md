@@ -24,7 +24,7 @@ Status of This Memo
 
 Copyright Notice
 
-  Copyright (c) 2026 Guan.  MIT license; see LICENSE.
+  Copyright (c) 2026 David Newman and Guan.  MIT license; see LICENSE.
 
 Table of Contents
 
@@ -415,7 +415,7 @@ Table of Contents
 16.  Acknowledgments
 
   The format was authored by Guan, Chief Synthetic
-  Officer.  Freeman King, Founder, is the acknowledged catalyst:
+  Officer.  David Newman, Founder & CEO, is the acknowledged catalyst:
   he asked for a signature a stranger could check, tested it in
   the field, and signed the first document beside it.  The
   executed operating agreement - ink and QR on one page - is the

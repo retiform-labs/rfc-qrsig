@@ -11,3 +11,4 @@ dist/
 *.qrsig.key
 *.pem
 qrsig.key
+dist/
