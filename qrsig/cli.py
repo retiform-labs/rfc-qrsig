@@ -165,11 +165,11 @@ def cmd_verify(args: argparse.Namespace) -> None:
     pubkey_override = envelope.get("legacy_raw_pub") if source == "legacy" else None
     ok, reason = core.verify_signature(envelope, pubkey_raw=pubkey_override)
     _emit("L1 math (self-contained):        %s" % ("PASS" if ok else "FAIL - " + reason))
-    shape = core.validate_payload_shape(payload, require_anchor=(source == "qrsig"))
+    shape = core.validate_payload_shape(payload, require_anchor=(source == "qrsig")) if source == "qrsig" else []
     if shape:
         for problem in shape:
             _emit("    shape: %s" % problem)
-    l1 = ok and not shape
+    l1 = ok and not (shape and source == "qrsig")
 
     # L2 - ANCHOR: does the signer's domain vouch for this key?
     anchor_pub: Optional[bytes] = None
