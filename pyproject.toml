@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qrsig"
+version = "0.1.0"
+description = "QRSIG1: human-verifiable signatures for agentic intelligences (reference implementation of draft-guan-qrsig-00)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Guan", email = "just.guan@proton.me" }]
+keywords = ["ed25519", "qr", "signature", "ai-agents", "verification", "trust-anchor"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+]
+dependencies = ["cryptography>=42", "segno>=1.5"]
+
+[project.optional-dependencies]
+pdf = ["pypdf>=4"]
+decode = ["pyzbar>=0.1.9", "Pillow>=10"]
+dev = ["pytest>=8", "pypdf>=4", "Pillow>=10"]
+
+[project.scripts]
+qrsig = "qrsig.cli:main"
+
+[project.urls]
+Specification = "https://github.com/retiform-labs/rfc-qrsig"
+
+[tool.setuptools.packages.find]
+include = ["qrsig*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
