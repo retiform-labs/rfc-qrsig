@@ -1,0 +1,37 @@
+# Changelog
+
+## v0.1.0 — 2026-10-18
+
+Initial release of the QRSIG1 reference implementation and specification.
+
+### Specification
+- `docs/draft-guan-qrsig-00.md`: the QRSIG1 draft (RFC 2119; envelope
+  format, canonical JSON, payload schema, trust anchors, L1/L2/L3
+  verification levels, content binding, legacy GUANSIG1 compatibility,
+  security + privacy considerations, deterministic test vectors in
+  Appendix A).
+
+### Implementation
+- `qrsig.core` — canonical JSON (sorted keys, NFC, no whitespace),
+  Ed25519 envelope (signature covers canonical(payload) alone),
+  QRSIG1 URI codec, key-id derivation, payload shape validation.
+- `qrsig.binding` — content-level document binding: `plain-text-v1`,
+  `pdf-pypdf-text-v1` (survives container-rewriting PDF apps).
+- `qrsig.anchor` — well-known key directory fetch/validate, trust
+  lookup with active/rotated/revoked statuses, pubkey-forgery check.
+- `qrsig.legacy` — verify-only GUANSIG1 adapter (SPKI-strip at wrapper
+  level; never mutates the signed payload).
+- `qrsig.qrcode` — segno render (EC level Q) + pyzbar decode (2x retry).
+- `qrsig.cli` — `keygen | sign | verify | qr | decode | anchor-validate`;
+  sidecar artifacts; offline mode.
+
+### Tooling
+- GitHub Actions CI (Python 3.9/3.11/3.12), opsec preflight gate +
+  pre-commit hook (injected, never-committed marker list), FUNDING.yml,
+  57-test suite incl. RFC conformance vectors from a fixed seed.
+
+### Verified in the field
+- The executed Operating Agreement that motivated the format verifies
+  at L1 through the legacy adapter; its byte-binding failure is the
+  container-rewrite lesson that motivated content binding, reproduced
+  live (see RFC §9 and §12).

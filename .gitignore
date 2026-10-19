@@ -7,3 +7,7 @@ dist/
 .pytest_cache/
 .opsec-markers
 *.png.tmp
+# private key material - never stageable, defense in depth
+*.qrsig.key
+*.pem
+qrsig.key
