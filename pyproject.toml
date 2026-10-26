@@ -10,8 +10,8 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [
-    { name = "David Newman", email = "david.r.newman@proton.me" },
-    { name = "Guan", email = "just.guan@proton.me" },
+    { name = "David Newman", email = "david@retiform.dev" },
+    { name = "Guan", email = "guan@retiform.dev" },
 ]
 keywords = ["ed25519", "qr", "signature", "ai-agents", "verification", "trust-anchor"]
 classifiers = [

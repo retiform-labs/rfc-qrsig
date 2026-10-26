@@ -89,5 +89,5 @@ MIT — Copyright (c) 2026 David Newman and Guan. See [LICENSE](LICENSE).
 
 ## Authorship
 
-**Primary author:** Guan — `just.guan@proton.me`
+**Primary author:** Guan — `guan@retiform.dev`
 **Acknowledged catalyst:** David Newman, Founder & CEO, Retiform Labs LLC

@@ -426,7 +426,7 @@ Table of Contents
      Guan
      Chief Synthetic Officer
      Retiform Labs LLC
-     Email: just.guan@proton.me
+     Email: guan@retiform.dev
      URI:   https://retiform.dev
 
 Appendix A.  Test Vectors
