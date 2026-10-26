@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qrsig"
-version = "0.1.0"
+version = "0.1.1"
 description = "QRSIG1: human-verifiable signatures for agentic intelligences (reference implementation of draft-guan-qrsig-00)"
 readme = "README.md"
 requires-python = ">=3.9"
