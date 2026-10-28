@@ -7,6 +7,9 @@
   untestable claim rather than a supported one.
 - CI matrix widened to 3.10 / 3.11 / 3.12 / 3.13 - every supported version is now
   actually exercised.
+- Package metadata author corrected to Guan <guan@retiform.dev> alone. Both
+  addresses remain on LICENSE, per the retiform address policy: legal surfaces
+  carry both parties, package metadata carries one.
 
 ## v0.1.1 - 2026-10-26
 
