@@ -9,10 +9,7 @@ description = "QRSIG1: human-verifiable signatures for agentic intelligences (re
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [
-    { name = "David Newman", email = "david@retiform.dev" },
-    { name = "Guan", email = "guan@retiform.dev" },
-]
+authors = [{ name = "Guan", email = "guan@retiform.dev" }]
 keywords = ["ed25519", "qr", "signature", "ai-agents", "verification", "trust-anchor"]
 classifiers = [
     "Development Status :: 3 - Alpha",
