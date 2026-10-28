@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.2 - 2026-10-28
+
+- Dropped Python 3.9 (end-of-life October 2025). requires-python is now >=3.10:
+  3.9 cannot be installed on current runners, so advertising support for it was an
+  untestable claim rather than a supported one.
+- CI matrix widened to 3.10 / 3.11 / 3.12 / 3.13 - every supported version is now
+  actually exercised.
+
+## v0.1.1 - 2026-10-26
+
+- Moved public identity addresses to retiform.dev across LICENSE and package
+  metadata, and carried that identity into the published artifact.
+
 ## v0.1.0 — 2026-10-18
 
 Initial release of the QRSIG1 reference implementation and specification.
