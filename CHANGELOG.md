@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.1.3 - 2026-10-28
+
+- Fixed `qrsig --version` reporting 0.1.0. `__init__.py` hardcoded the string
+  at the initial commit and it was never bumped, so 0.1.1 and 0.1.2 both
+  claimed to be 0.1.0. `__version__` now reads from installed package
+  metadata, with an explicit 0.0.0+unknown fallback for an uninstalled source
+  tree.
+- Added tests pinning the drift class: the version string must equal installed
+  metadata, and the --version flag must report it.
+
+0.1.2 shipped with the stale version string because it was found only after
+that artifact was published and PyPI has no yank API. No functional or
+wire-format changes in 0.1.3.
+
 ## v0.1.2 - 2026-10-28
 
 - Dropped Python 3.9 (end-of-life October 2025). requires-python is now >=3.10:
