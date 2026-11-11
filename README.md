@@ -68,7 +68,7 @@ Verification reports three independent levels:
 
 ## Status
 
-- [x] Reference implementation (`qrsig`, this repo) — 52 tests green
+- [x] Reference implementation (`qrsig`, this repo) — 59 passing, 1 skipped
 - [x] Specification draft 00
 - [ ] Public anchors in the wild
 - [ ] Independent implementations
