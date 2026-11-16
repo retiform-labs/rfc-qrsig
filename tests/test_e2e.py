@@ -235,3 +235,39 @@ def test_detached_payload_requires_doc_sha256(workspace):
     }
     problems = C.validate_payload_shape(payload)
     assert any("doc_sha256" in p and "detached" in p for p in problems)
+
+
+def test_embedded_tampered_content_fails(workspace, keypair_and_anchor):
+    """An embedded signature must NOT verify once the TEXT changes.
+
+    Regression guard: the first cut of the placement fix reported L3a as N/A
+    and then let the aggregate through, so a tampered embedded document
+    passed.  N/A is not a pass.
+    """
+    priv, pub_raw, anchor_url, docs = keypair_and_anchor
+    host = anchor_url.split("//")[1]
+    domain = host.split(":")[0]
+    doc = workspace / "agreement.txt"
+    run_cli("keygen", "--out", "k", "--force")
+    pub_b64 = (workspace / "k.pub").read_text().strip().splitlines()[-1]
+    pub_raw = core.b64_decode(pub_b64)
+    kid = core.derive_key_id(pub_raw)
+    docs["/.well-known/qrsig-keys"] = make_anchor_doc(pub_raw, kid, domain=domain)
+    run_cli("sign", str(doc), "--key", "k.key", "--anchor", domain, "--role", "CSO", "--org", "Example Org", "--placement", "embedded")
+    doc.write_text("The party of the first part agrees to NOTHING at all.\n", encoding="utf-8")
+    out = run_cli("verify", str(doc), "--anchor-url", anchor_url + "/.well-known/qrsig-keys", expect=1)
+    assert any("L3b content binding" in l and "FAIL" in l for l in out)
+    assert any("FAILED" in l for l in out)
+
+
+def test_embedded_without_content_binding_is_incoherent(workspace):
+    """Embedded placement REQUIRES content binding: it is the only leg left."""
+    from qrsig import core as C
+    payload = {
+        "v": 1, "anchor": "example.org", "role": "CSO", "org": "Example Org",
+        "signature_placement": "embedded",
+        "key_id": "qs1-x", "pubkey_b64": C.b64_encode(bytes(range(32))),
+        "signed_at": "2026-11-16T00:00:00Z",
+    }
+    problems = C.validate_payload_shape(payload)
+    assert any("embedded placement requires content" in p for p in problems)

@@ -213,12 +213,15 @@ def cmd_verify(args: argparse.Namespace) -> None:
     # L3 - BINDING: does the payload name THIS document?
     placement = payload.get("signature_placement")
     if placement == "embedded":
+        # Byte binding is not merely failed here, it is IMPOSSIBLE: the file
+        # carries the signature that would have to describe it.  It is N/A,
+        # and N/A is not a pass -- content binding is the only leg, so it
+        # must carry the whole verdict on its own.
         _emit("L3a byte binding (doc_sha256):   N/A (embedded signature)")
-        doc_ok = True  # not applicable; L3b carries the proof
+        doc_ok = None
     else:
         doc_ok = payload.get("doc_sha256") == hashlib.sha256(doc_bytes).hexdigest()
         _emit("L3a byte binding (doc_sha256):   %s" % ("PASS" if doc_ok else "FAIL"))
-    l3 = doc_ok
     if payload.get("content_sha256") and payload.get("content_method"):
         try:
             content_ok = binding.content_digest(doc_bytes, payload["content_method"]) == payload["content_sha256"]
@@ -226,7 +229,12 @@ def cmd_verify(args: argparse.Namespace) -> None:
             content_ok = False
             _emit("    content method error: %s" % exc)
         _emit("L3b content binding (%s): %s" % (payload["content_method"], "PASS" if content_ok else "FAIL"))
-        l3 = l3 or content_ok
+        if placement == "embedded":
+            l3 = content_ok          # content is the ONLY leg; it cannot be skipped
+        else:
+            l3 = bool(doc_ok) or content_ok
+    else:
+        l3 = bool(doc_ok)
 
     verified = l1 and l3 and (l2 or args.offline)
     if verified and not l2:
