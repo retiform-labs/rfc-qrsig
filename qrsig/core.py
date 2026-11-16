@@ -50,6 +50,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 URI_PREFIX = "QRSIG1:"
 SCHEMA_VERSION = 1
 
+PLACEMENTS = ("detached", "embedded")
+
 # SPKI DER header for Ed25519 (RFC 8410): 12 bytes before the raw key.
 _SPKI_ED25519_HEADER = bytes.fromhex("302a300506032b6570032100")
 
@@ -182,9 +184,19 @@ def validate_payload_shape(payload: Dict[str, Any], require_anchor: bool = True)
     problems = []
     if payload.get("v") != SCHEMA_VERSION:
         problems.append("payload v must be %d" % SCHEMA_VERSION)
-    for field in ("role", "org", "doc_sha256", "key_id", "pubkey_b64", "signed_at"):
+    for field in ("role", "org", "key_id", "pubkey_b64", "signed_at"):
         if not payload.get(field):
             problems.append("missing required field: %s" % field)
+    placement = payload.get("signature_placement")
+    if placement not in PLACEMENTS:
+        problems.append("signature_placement must be one of %s" % (PLACEMENTS,))
+    elif placement == "detached" and not payload.get("doc_sha256"):
+        problems.append("missing required field: doc_sha256 (required when detached)")
+    elif placement == "embedded":
+        if payload.get("doc_sha256"):
+            problems.append("doc_sha256 must be absent when signature_placement is embedded")
+        if not (payload.get("content_sha256") and payload.get("content_method")):
+            problems.append("embedded placement requires content_sha256 + content_method")
     if require_anchor and not payload.get("anchor"):
         problems.append("missing required field: anchor")
     if payload.get("doc_sha256"):

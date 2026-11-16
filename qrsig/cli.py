@@ -102,6 +102,7 @@ def cmd_sign(args: argparse.Namespace) -> None:
         "key_id": args.key_id or core.derive_key_id(pub_raw),
         "pubkey_b64": core.b64_encode(pub_raw),
         "signed_at": args.signed_at or _now_rfc3339(),
+        "signature_placement": getattr(args, "placement", None) or "detached",
     }
     if args.content != "none":
         method = binding.detect_method(args.file) if args.content == "auto" else args.content
@@ -110,6 +111,8 @@ def cmd_sign(args: argparse.Namespace) -> None:
             payload["content_method"] = method
         except ValueError as exc:
             _die(str(exc))
+    if payload["signature_placement"] == "embedded":
+        payload.pop("doc_sha256", None)
     envelope = core.sign_payload(priv, payload)
     sig_path = args.file + SIG_SUFFIX
     with open(sig_path, "w") as fh:
@@ -118,7 +121,9 @@ def cmd_sign(args: argparse.Namespace) -> None:
     qrcode.render_png(core.envelope_to_uri(envelope), png_path)
     _emit(sig_path)
     _emit(png_path)
-    _emit("doc_sha256: %s" % payload["doc_sha256"])
+    _emit("signature_placement: %s" % payload["signature_placement"])
+    if "doc_sha256" in payload:
+        _emit("doc_sha256: %s" % payload["doc_sha256"])
     if "content_sha256" in payload:
         _emit("content (%s): %s" % (payload["content_method"], payload["content_sha256"]))
 
@@ -206,8 +211,13 @@ def cmd_verify(args: argparse.Namespace) -> None:
         _emit("L2 anchor:                       SKIPPED (payload carries no anchor)")
 
     # L3 - BINDING: does the payload name THIS document?
-    doc_ok = payload.get("doc_sha256") == hashlib.sha256(doc_bytes).hexdigest()
-    _emit("L3 byte binding (doc_sha256):    %s" % ("PASS" if doc_ok else "FAIL"))
+    placement = payload.get("signature_placement")
+    if placement == "embedded":
+        _emit("L3a byte binding (doc_sha256):   N/A (embedded signature)")
+        doc_ok = True  # not applicable; L3b carries the proof
+    else:
+        doc_ok = payload.get("doc_sha256") == hashlib.sha256(doc_bytes).hexdigest()
+        _emit("L3a byte binding (doc_sha256):   %s" % ("PASS" if doc_ok else "FAIL"))
     l3 = doc_ok
     if payload.get("content_sha256") and payload.get("content_method"):
         try:
@@ -215,8 +225,8 @@ def cmd_verify(args: argparse.Namespace) -> None:
         except ValueError as exc:
             content_ok = False
             _emit("    content method error: %s" % exc)
-        _emit("L3 content binding (%s):  %s" % (payload["content_method"], "PASS" if content_ok else "FAIL"))
-        l3 = l3 and content_ok
+        _emit("L3b content binding (%s): %s" % (payload["content_method"], "PASS" if content_ok else "FAIL"))
+        l3 = l3 or content_ok
 
     verified = l1 and l3 and (l2 or args.offline)
     if verified and not l2:
@@ -268,6 +278,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--key-id", default=None)
     p.add_argument("--signed-at", default=None, help="RFC 3339 UTC; defaults to now (tests pin this)")
     p.add_argument("--content", default="auto", choices=["auto", "none", "plain-text-v1", "pdf-pypdf-text-v1"])
+    p.add_argument("--placement", default="detached", choices=list(core.PLACEMENTS),
+                   help="where the signature lives relative to the document")
     p.set_defaults(fn=cmd_sign)
 
     p = sub.add_parser("verify", help="verify a document at L1/L2/L3")

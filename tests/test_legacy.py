@@ -33,6 +33,7 @@ def legacy_envelope():
         "role": "Guan, Chief Synthetic Officer",
         "org": "Retiform Labs LLC",
         "doc_sha256": "c" * 64,
+        "signature_placement": "detached",
         "key_id": "legacy-key",
         "signed_at": "2026-10-18T10:43:32+00:00",
         "pubkey_b64": core.b64_encode(spki),

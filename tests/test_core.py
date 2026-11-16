@@ -26,6 +26,7 @@ def make_payload(pub_raw: bytes = None) -> dict:
         "role": "Test Officer",
         "org": "Example Org",
         "doc_sha256": "a" * 64,
+        "signature_placement": "detached",
         "key_id": "qs1-test",
         "pubkey_b64": core.b64_encode(pub_raw if pub_raw is not None else bytes(range(32))),
         "signed_at": "2026-10-18T00:00:00Z",

@@ -134,6 +134,7 @@ class TestCheckEnvelope:
             "role": "Test Officer",
             "org": "Example Org",
             "doc_sha256": "a" * 64,
+        "signature_placement": "detached",
             "key_id": "qs1-live",
             "pubkey_b64": "PENDING",
             "signed_at": "2026-10-18T00:00:00Z",

@@ -137,13 +137,42 @@ Table of Contents
                      "Chief Synthetic Officer".
      org             REQUIRED.  The organization, e.g. "Retiform
                      Labs LLC".
-     doc_sha256      REQUIRED.  Lowercase hex SHA-256 of the raw
-                     document bytes.
+     doc_sha256      CONDITIONALLY REQUIRED.  Lowercase hex SHA-256 of
+                     the raw document bytes, over the whole file as it
+                     exists outside any embedded signature.  It MUST be
+                     present when the signature travels detached from
+                     the document (sidecar, separate file, or --qr from
+                     an external image) and MUST be omitted when the
+                     signature is embedded IN the document it signs.
+                     The reason is structural: a document that contains
+                     its own signature cannot hash to a value written
+                     inside that signature.  Absence of this field is
+                     therefore itself a claim -- signature_placement
+                     MUST say "embedded" -- and a verifier MUST NOT
+                     treat it as a missing-field error.
      content_sha256  OPTIONAL.  Hex SHA-256 of bound content under
                      content_method (Section 9).  If present,
                      content_method MUST be present.
      content_method  OPTIONAL.  Versioned method id, e.g.
                      "plain-text-v1".
+     signature_placement
+                     REQUIRED.  Where the signature lives relative to
+                     the document it signs.  MUST be one of:
+                       "detached"  - the signature travels beside the
+                                     document (sidecar file, separate
+                                     signature page, or an image the
+                                     holder keeps apart).  doc_sha256
+                                     MUST be present.
+                       "embedded"  - the signature lives inside the
+                                     signed document itself (printed
+                                     QR, appended signature page, form
+                                     field).  doc_sha256 MUST be absent
+                                     and content binding MUST be present.
+                     Declaring this turns a structural impossibility
+                     into a stated, checkable property.  Without it,
+                     every verifier must re-derive whether a byte-hash
+                     mismatch is a failure or an inevitability -- and
+                     the two are indistinguishable from the outside.
      key_id          REQUIRED.  Stable key identifier, opaque to
                      the verifier; the anchor directory is its
                      authority.  Reference derivation: "qs1-" + the
@@ -255,7 +284,17 @@ Table of Contents
                  role.
      L3 BINDING  The payload's doc_sha256 matches the raw bytes of
                  the document in hand, and/or the content binding
-                 (Section 9) matches.
+                 (Section 9) matches.  This is an OR, not an AND.
+                 Report the two legs separately so a reader can see
+                 which one carried the proof:
+                   L3a byte    - raw-byte match (impossible whenever
+                                 the signature is embedded)
+                   L3b content - normalized-content match
+                 A document that contains its own signature ALWAYS
+                 fails L3a.  That is not a failure of the document.
+                 A verifier MUST report L3a as "N/A (embedded)" and
+                 reach its verdict on L3b whenever the payload
+                 declares signature_placement "embedded".
 
   A signature is VERIFIED at exactly the intersection achieved.  An
   implementation MUST report which levels passed; a bare "valid"

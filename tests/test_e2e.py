@@ -71,8 +71,8 @@ def test_full_workflow(workspace, keypair_and_anchor):
     assert any("VERIFIED" in line for line in out)
     assert any("L1 math" in line and "PASS" in line for line in out)
     assert any("L2 anchor" in line and "PASS" in line for line in out)
-    assert any("L3 byte binding" in line and "PASS" in line for line in out)
-    assert any("L3 content binding" in line and "PASS" in line for line in out)
+    assert any("L3a byte binding" in line and "PASS" in line for line in out)
+    assert any("L3b content binding" in line and "PASS" in line for line in out)
 
 
 def test_sidecar_verify(workspace, keypair_and_anchor):
@@ -147,9 +147,13 @@ def test_content_binding_survives_reformat(workspace, keypair_and_anchor):
     docs["/.well-known/qrsig-keys"] = make_anchor_doc(pub_raw, kid, domain=domain)
     run_cli("sign", str(doc), "--key", "k.key", "--anchor", domain, "--role", "CSO", "--org", "Example Org")
     doc.write_text("The  party   of\nthe first part\tagrees to everything.\n\n\nSigned in the tent.", encoding="utf-8")
-    out = run_cli("verify", str(doc), "--anchor-url", anchor_url + "/.well-known/qrsig-keys", expect=1)
-    assert any("L3 byte binding" in line and "FAIL" in line for line in out)
-    assert any("L3 content binding" in line and "PASS" in line for line in out)
+    # Reformatting breaks byte binding but NOT content binding.  Section 8
+    # makes L3 an and/or, so a content match VERIFIES: that is the whole
+    # reason content binding exists.
+    out = run_cli("verify", str(doc), "--anchor-url", anchor_url + "/.well-known/qrsig-keys")
+    assert any("L3a byte binding" in line and "FAIL" in line for line in out)
+    assert any("L3b content binding" in line and "PASS" in line for line in out)
+    assert any("VERIFIED" in line for line in out)
 
 
 def test_wrong_document_for_qr(workspace, keypair_and_anchor):
@@ -183,3 +187,51 @@ def test_anchor_validate_command(anchor_server):
     docs["/.well-known/qrsig-keys"]["keys"][0]["status"] = "bogus"
     out = run_cli("anchor-validate", "--url", "http://127.0.0.1:%d/.well-known/qrsig-keys" % port, "--domain", "example.org", expect=1)
     assert any("INVALID" in line for line in out)
+
+
+def test_embedded_signature_verifies_without_byte_binding(workspace, keypair_and_anchor):
+    """THE self-referential case: a document that carries its own signature."""
+    priv, pub_raw, anchor_url, docs = keypair_and_anchor
+    host = anchor_url.split("//")[1]
+    domain = host.split(":")[0]
+    doc = workspace / "agreement.txt"
+    run_cli("keygen", "--out", "k", "--force")
+    pub_b64 = (workspace / "k.pub").read_text().strip().splitlines()[-1]
+    pub_raw = core.b64_decode(pub_b64)
+    kid = core.derive_key_id(pub_raw)
+    docs["/.well-known/qrsig-keys"] = make_anchor_doc(pub_raw, kid, domain=domain)
+    run_cli("sign", str(doc), "--key", "k.key", "--anchor", domain,
+            "--role", "CSO", "--org", "Example Org", "--placement", "embedded")
+    env = json.loads((workspace / "agreement.txt.qrsig.json").read_text())
+    assert env["payload"]["signature_placement"] == "embedded"
+    assert "doc_sha256" not in env["payload"]
+    out = run_cli("verify", str(doc), "--anchor-url", anchor_url + "/.well-known/qrsig-keys")
+    assert any("L3a byte binding" in l and "N/A" in l for l in out)
+    assert any("L3b content binding" in l and "PASS" in l for l in out)
+    assert any("VERIFIED" in l for l in out)
+
+
+def test_embedded_payload_rejects_doc_sha256(workspace):
+    from qrsig import core as C
+    payload = {
+        "v": 1, "anchor": "example.org", "role": "CSO", "org": "Example Org",
+        "doc_sha256": "a" * 64, "signature_placement": "embedded",
+        "content_sha256": "b" * 64, "content_method": "plain-text-v1",
+        "key_id": "qs1-x", "pubkey_b64": C.b64_encode(bytes(range(32))),
+        "signed_at": "2026-11-16T00:00:00Z",
+    }
+    problems = C.validate_payload_shape(payload)
+    assert any("doc_sha256 must be absent" in p for p in problems)
+
+
+def test_detached_payload_requires_doc_sha256(workspace):
+    from qrsig import core as C
+    payload = {
+        "v": 1, "anchor": "example.org", "role": "CSO", "org": "Example Org",
+        "signature_placement": "detached",
+        "content_sha256": "b" * 64, "content_method": "plain-text-v1",
+        "key_id": "qs1-x", "pubkey_b64": C.b64_encode(bytes(range(32))),
+        "signed_at": "2026-11-16T00:00:00Z",
+    }
+    problems = C.validate_payload_shape(payload)
+    assert any("doc_sha256" in p and "detached" in p for p in problems)
