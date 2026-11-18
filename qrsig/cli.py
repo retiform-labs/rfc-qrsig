@@ -90,6 +90,8 @@ def _load_private_key(path: str, password: str):
 def cmd_sign(args: argparse.Namespace) -> None:
     if not os.path.exists(args.key):
         _die("key not found: %s (run `qrsig keygen`)" % args.key)
+    if not os.path.exists(args.file):
+        _die("document not found: %s" % args.file)
     data = open(args.file, "rb").read()
     priv = _load_private_key(args.key, args.password)
     pub_raw = priv.public_key().public_bytes_raw()
@@ -128,6 +130,26 @@ def cmd_sign(args: argparse.Namespace) -> None:
         _emit("content (%s): %s" % (payload["content_method"], payload["content_sha256"]))
 
 
+def _decode_qr_image(path: str) -> str:
+    """Decode a QR image, turning codec failures into a clean CLI error.
+
+    Both failure modes are reachable from ordinary user input: a path that is
+    not an image at all (PIL raises UnidentifiedImageError, an OSError
+    subclass) and an image that simply holds no QR (decode_png raises
+    ValueError).  Neither belongs in front of a human as a traceback.
+    """
+    if not os.path.exists(path):
+        _die("image not found: %s" % path)
+    try:
+        return qrcode.decode_png(path)
+    except ValueError as exc:
+        _die(str(exc))
+    except OSError as exc:
+        _die("cannot read %s as an image: %s" % (path, exc))
+    except RuntimeError as exc:  # pyzbar extra absent
+        _die(str(exc))
+
+
 def _resolve_envelope(args: argparse.Namespace, doc_path: str):
     """Find the signature envelope: sidecar json > --qr image > --uri.
     Legacy GUANSIG1 URIs are detected and lifted transparently."""
@@ -135,7 +157,7 @@ def _resolve_envelope(args: argparse.Namespace, doc_path: str):
     if getattr(args, "uri", None):
         uri = args.uri
     elif getattr(args, "qr", None):
-        decoded = qrcode.decode_png(args.qr)
+        decoded = _decode_qr_image(args.qr)
         if legacy.is_legacy_uri(decoded):
             _emit("legacy format detected (GUANSIG1)")
             legacy_env = legacy.parse_legacy_uri(decoded)
@@ -205,9 +227,13 @@ def cmd_verify(args: argparse.Namespace) -> None:
                 l2 = aok
         except Exception as exc:  # noqa: BLE001 - network errors are findings
             _emit("L2 anchor (%s):         UNREACHABLE - %s" % (domain, exc))
-    elif source == "legacy":
+    elif not args.offline and source == "legacy":
         _emit("L2 anchor:                       SKIPPED (legacy envelope; supply --anchor-url)")
-    else:
+    elif not args.offline:
+        # The --offline case already printed its own SKIPPED line above.
+        # Falling through here printed a SECOND, FALSE line claiming the
+        # payload carried no anchor -- while it carried one. A message that
+        # names a cause the code never checked is worse than silence.
         _emit("L2 anchor:                       SKIPPED (payload carries no anchor)")
 
     # L3 - BINDING: does the payload name THIS document?
@@ -245,17 +271,31 @@ def cmd_verify(args: argparse.Namespace) -> None:
     raise SystemExit(0 if verified else 1)
 
 
+def _default_qr_out(sig_path: str) -> str:
+    """Sibling PNG for a saved signature: <file>.qrsig.json -> <file>.qrsig.png."""
+    base = sig_path[:-5] if sig_path.endswith(".json") else sig_path
+    return base + ".png"
+
+
 def cmd_qr(args: argparse.Namespace) -> None:
-    envelope = json.load(open(args.sig))
-    qrcode.render_png(core.envelope_to_uri(envelope), args.out)
-    _emit(args.out)
+    if not os.path.exists(args.sig):
+        _die("signature not found: %s" % args.sig)
+    try:
+        envelope = json.load(open(args.sig))
+    except ValueError as exc:
+        _die("signature is not valid JSON: %s (%s)" % (args.sig, exc))
+    out = args.out or _default_qr_out(args.sig)
+    qrcode.render_png(core.envelope_to_uri(envelope), out)
+    _emit(out)
 
 
 def cmd_decode(args: argparse.Namespace) -> None:
-    _emit(qrcode.decode_png(args.image))
+    _emit(_decode_qr_image(args.image))
 
 
 def cmd_anchor_validate(args: argparse.Namespace) -> None:
+    if not args.url and not args.domain:
+        _die("need --domain <host> or --url <anchor url>")
     url = args.url or anchor_mod.anchor_url(args.domain)
     doc = anchor_mod.fetch(url, require_https=url.startswith("https://"))
     problems = anchor_mod.validate_directory(doc, expect_domain=args.domain)

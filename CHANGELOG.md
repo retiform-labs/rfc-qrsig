@@ -1,5 +1,102 @@
 # Changelog
 
+## v0.1.4 - 2026-11-17
+
+Hardening pass: every public entry point that reads attacker-controlled
+bytes now refuses instead of crashing, and several real defects are fixed.
+
+### Fixed (defects)
+
+- **`canonical()` did not NFC-normalize dict KEYS.** It normalized values
+  only, so an NFC-spelled key and an NFD-spelled key produced different
+  canonical bytes - a signature-malleability hole in the one function whose
+  entire purpose is determinism, and a direct contradiction of this module's
+  own docstring. Keys now normalize too. A payload whose two DISTINCT keys
+  collide after normalization raises `ValueError` instead of silently
+  collapsing one, since which entry survived would otherwise depend on
+  insertion order.
+- **`validate_payload_shape` accepted `v = True` and `v = 1.0`.** `True == 1`
+  and `1.0 == 1` in Python, so a bare `!=` let a non-integer version pass.
+  Now type-checked. `anchor.validate_directory` carried the identical
+  expression and was fixed in lockstep - two validators disagreeing about
+  the same field is worse than both being permissive.
+- **`validate_payload_shape` crashed on hostile field types.** `doc_sha256`
+  as a list raised `AttributeError`, as an int raised `TypeError`; a
+  non-dict payload raised `AttributeError`. It is documented to return a
+  list of problems and never raise, and the payload is attacker-controlled.
+- **`doc_sha256` accepted non-hex.** The old check was "64 chars and already
+  lowercase", which passes a string of 64 z characters. Now an anchored hex
+  regex, applied to `content_sha256` as well.
+- **`signed_at` accepted any string, including non-UTC offsets.** Now shape-
+  checked as RFC 3339 UTC, with a calendar check for impossible dates.
+- **`verify_signature` raised instead of returning `(False, reason)`** on
+  hostile envelope shapes (non-dict payload, non-string `sig_b64`, any
+  non-JSON-serialisable payload value). On the CLI path that was a traceback
+  where a `FAILED` line belongs.
+- **`lookup_key` failed OPEN on an unrecognized `status`.** Any value other
+  than `revoked`/`rotated` - including `compromised`, `ACTIVE`, the empty
+  string, or an absent field - was treated as active and therefore trusted.
+  Now fails closed, matching the spec's closed three-value vocabulary. This
+  is the one deliberate behaviour change in the pass.
+- **`lookup_key` / `validate_directory` / `check_envelope` crashed on a
+  malformed anchor document** (`keys` as a dict, a list of strings, a
+  non-dict entry). `lookup_key` is reachable from `check_envelope` with no
+  validation gate in between, so it is hardened directly.
+- **`qrcode.render_png_bytes` skipped the `QRSIG1:` prefix check that
+  `render_png` enforces.** The two are documented mirrors; the asymmetry let
+  a pipeline encode an arbitrary attacker-chosen string as a QR. Both paths
+  now share one guard, and the message names the offending value.
+- **`qrsig qr` crashed when `--out` was omitted**, though `--help` presents
+  the flag as optional. Now derives the sibling `.qrsig.png`.
+- **`qrsig sign` on a missing document, `qrsig decode` on a non-image, and
+  `qrsig anchor-validate` with neither `--domain` nor `--url`** all raised
+  tracebacks. All are clean `error:` messages with exit 2 now, matching the
+  `_die` convention already used elsewhere in the CLI.
+- **`anchor.fetch` reached any URI scheme, including `file://`.** With
+  `require_https=False` - the documented escape hatch for a local test server
+  or a self-hosted registry - the only scheme check was skipped entirely, so an
+  `--anchor-url file:///etc/hostname` would read and parse a local file. The
+  scheme gate is now ALWAYS on and admits only http and https; `require_https`
+  raises the bar from that to https-only rather than replacing it.
+- **`anchor` in a signed payload was never shape-checked.** It is signed
+  content a verifier feeds straight into a URL fetch, so a newline, space,
+  slash or `@` in it is a URL/header-injection attempt. `validate_payload_shape`
+  now requires a bare hostname (letters, digits, dots, hyphens, an optional
+  port, bracketed IPv6). Relying on urllib to reject it was not a defence - it
+  raised `InvalidURL` only after the request object had already been built.
+- **Uppercase URL schemes were refused for their case alone.** `HTTPS://` is a
+  legitimate https URL (RFC 3986 makes schemes case-insensitive) and was being
+  rejected by a case-sensitive `startswith`. The scheme is normalised before
+  the check now, so `FILE://` is still refused and `HTTPS://` is not.
+- **`qrsig verify --offline` printed two contradictory L2 lines**, the second
+  claiming the payload carried no anchor while it demonstrably did. One
+  true line now.
+
+### Added (tests)
+
+- Three adversarial test modules - `test_adversarial_core.py`,
+  `test_adversarial_anchor.py`, `test_adversarial_cli.py` - covering hostile
+  URIs, hostile payloads, hostile anchor documents, key substitution, status
+  semantics, QR round-trip integrity, and the CLI exit-code contract.
+- Every defect above has a test that was watched going RED with the fix
+  reverted, not merely green with it in place.
+- The self-consistent-forgery property is now pinned: an attacker can build
+  an envelope that passes L1, and our anchor directory must refuse it.
+- Suite: 64 to 355 passing (1 skipped, pre-existing). Coverage 82% to 94%.
+
+### Known gaps (documented, deliberately not repaired)
+
+Each is pinned by a test that will flip loudly when someone fixes it.
+
+- `check_envelope` does not bind `payload["anchor"]` to `anchor_doc["domain"]`.
+  Not a live bypass: the verifier derives the fetch URL from the payload's own
+  anchor, and the CLI separately guards with validate_directory(expect_domain).
+- A revocation applied by APPENDING a second, revoked entry for the same
+  key_id is ignored - lookup_key returns the first match. An operator footgun,
+  not an attacker capability.
+- valid_from is never enforced; no expiry field exists anywhere.
+- revoked_at only has to be truthy, not a parseable date.
+
 ## v0.1.3 - 2026-10-28
 
 - Fixed `qrsig --version` reporting 0.1.0. `__init__.py` hardcoded the string

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import segno
 
-from .core import parse_uri
+from .core import URI_PREFIX, parse_uri
 
 # Error correction level Q: ~25% damage tolerance. The QR travels
 # printed inside documents; durability beats density.
@@ -18,10 +18,25 @@ SCALE = 8
 BORDER = 2
 
 
+def _require_qrsig1(uri: str) -> str:
+    """Both render paths must enforce the SAME contract.
+
+    ``render_png`` and ``render_png_bytes`` are documented mirrors, so
+    neither may encode anything that is not a QRSIG1: URI.  A QR carrying a
+    non-QRSIG1 string is a phishing surface: a scanner reads it, and a naive
+    verifier may hand whatever it holds to ``parse_uri``.
+    """
+    if not uri.startswith(URI_PREFIX):
+        raise ValueError(
+            "refusing to encode a non-QRSIG1 URI (missing %r prefix): %r"
+            % (URI_PREFIX, uri[:32])
+        )
+    return uri
+
+
 def render_png(uri: str, out_path: str) -> str:
     """Write the QR PNG for a QRSIG1 URI; returns the path."""
-    if not uri.startswith("QRSIG1:"):
-        raise ValueError("render_png expects a QRSIG1 URI")
+    _require_qrsig1(uri)
     qr = segno.make(uri, error=EC_LEVEL)
     qr.save(out_path, scale=SCALE, border=BORDER)
     return out_path
@@ -29,6 +44,7 @@ def render_png(uri: str, out_path: str) -> str:
 
 def render_png_bytes(uri: str) -> bytes:
     """QR PNG for a QRSIG1 URI, as bytes (for tests and pipelines)."""
+    _require_qrsig1(uri)
     qr = segno.make(uri, error=EC_LEVEL)
     import io
 

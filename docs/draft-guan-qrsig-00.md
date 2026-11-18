@@ -196,8 +196,15 @@ Table of Contents
      * No whitespace between tokens; separators "," and ":".
      * Strings: Unicode scalar values, NOT escaped to ASCII
        (ensure_ascii=false).  Signers SHOULD NFC-normalize all
-       string values; implementations MUST NFC-normalize before
+       strings; implementations MUST NFC-normalize before
        serialization so equivalent strings canonicalize identically.
+       This applies to object KEYS as well as VALUES: two documents
+       differing only in the normalization form of a key name are
+       the same document, and an implementation that normalizes one
+       but not the other is malleable.  An implementation MUST
+       reject, not silently merge, an object whose distinct keys
+       collide after normalization - which of the two survived would
+       otherwise depend on serialization order.
      * Output encoding: UTF-8.
 
   Reference: qrsig.core.canonical in the reference implementation.
