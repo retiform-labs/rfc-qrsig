@@ -2,8 +2,46 @@
 
 ## v0.1.4 - 2026-11-17
 
-Hardening pass: every public entry point that reads attacker-controlled
-bytes now refuses instead of crashing, and several real defects are fixed.
+Two changes: an **L3 conformance fix that unblocks every
+self-signed document**, and a hardening pass in which every public entry
+point that reads attacker-controlled bytes refuses instead of crashing.
+
+### Fixed (L3 conformance - the headline)
+
+- **L3 was an AND where the spec says OR, which made every embedded
+  signature permanently unverifiable.** Spec section 8 reads: *doc_sha256
+  matches ... **and/or** the content binding matches*. The implementation
+  required both. A document that carries its own signature CANNOT carry a
+  hash of itself, so doc_sha256 is necessarily absent for exactly the
+  placement that is most useful - and the AND turned that into a hard FAIL.
+  Confirmed against a real executed instrument: our own Operating Agreement
+  amendment reported FAILED under 0.1.3 while its content binding passed.
+  - **New required payload field signature_placement**: detached
+    (signature lives beside the document; doc_sha256 required) or
+    embedded (signature lives inside the document; doc_sha256 MUST be
+    absent and the content binding MUST be present). The spec now requires a
+    signer to state which it produced rather than leaving a verifier to infer
+    it from absent fields.
+  - **doc_sha256 is now CONDITIONALLY required** rather than always, and
+    the CLI reports the two legs separately as L3a byte binding and
+    L3b content binding.
+  - **N/A is not a pass.** The first cut of this fix set the byte leg to
+    True for embedded signatures, so a text-tampered document still printed
+    VERIFIED. The embedded verdict now rides on the content binding ALONE:
+    l3 = content_ok. Two regression tests pin it.
+  - --placement on qrsig sign, defaulting to detached so existing
+    callers are unaffected.
+
+### Fixed (packaging)
+
+- **The PDF content binding died with a bare ModuleNotFoundError.** pypdf
+  is a declared optional extra (qrsig[pdf]), which is correct - a base
+  install should not drag a PDF library - but nothing caught the absence, so
+  the tool headline use case on its most common file type ended in a
+  traceback with exit 1. It now raises with actionable guidance and the CLI
+  exits 2 with: PDF content binding needs the optional extra: pip install
+  qrsig[pdf]. A missing dependency is not a verification verdict and must
+  never be silently reported as one.
 
 ### Fixed (defects)
 

@@ -254,6 +254,8 @@ def cmd_verify(args: argparse.Namespace) -> None:
         except ValueError as exc:
             content_ok = False
             _emit("    content method error: %s" % exc)
+        except RuntimeError as exc:  # missing optional extra is not a verdict
+            _die(str(exc))
         _emit("L3b content binding (%s): %s" % (payload["content_method"], "PASS" if content_ok else "FAIL"))
         if placement == "embedded":
             l3 = content_ok          # content is the ONLY leg; it cannot be skipped

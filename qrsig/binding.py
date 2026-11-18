@@ -44,10 +44,25 @@ def _plain_text(data: bytes) -> bytes:
 def _pdf_text(data: bytes) -> bytes:
     import io
 
-    from pypdf import PdfReader
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:  # pragma: no cover - environment-dependent
+        raise RuntimeError(
+            "PDF content binding needs the optional extra: pip install qrsig[pdf]"
+        ) from exc
 
-    reader = PdfReader(io.BytesIO(data))
-    pages = [(page.extract_text() or "") for page in reader.pages]
+    # TWO distinct failures, one requirement: the caller gets a message, not a
+    # traceback.  A missing extra is a deployment problem; a file pypdf cannot
+    # parse is a property of the DOCUMENT.  Conflating them would give actively
+    # misleading advice - 'install this package' for a corrupt PDF, or 'this
+    # document is unreadable' for a missing dependency.
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        pages = [(page.extract_text() or "") for page in reader.pages]
+    except Exception as exc:  # noqa: BLE001 - any parse failure is a finding
+        raise RuntimeError(
+            "cannot read document as PDF (content method pdf-pypdf-text-v1): %s" % exc
+        ) from exc
     return _normalize_text("\n\n".join(pages)).encode("utf-8")
 
 
