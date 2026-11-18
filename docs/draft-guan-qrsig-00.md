@@ -337,6 +337,29 @@ Table of Contents
   one of the two.  New methods are added by publishing a new
   "-vN" id; methods are never redefined in place.
 
+  LIMITATION - text extraction is not invariant under every
+  rewrite.  Content binding survives a full container rewrite
+  (the common case: a signing application rebuilds the file),
+  because the extracted text is unchanged.  It does NOT survive
+  a tool that re-spaces glyphs or re-subsets fonts without
+  changing a single visible character: the page looks identical
+  while extraction yields "R E T I F O R M" for "RETIFORM",
+  and any extractor-based digest changes.
+
+  This is a property of the METHOD, not a defect to be repaired
+  by making the method stricter or looser.  A signer that needs
+  byte-level fidelity MUST use signature_placement "detached"
+  with doc_sha256, which binds the exact bytes and is unaffected
+  by any rewrite.  The two placements exist precisely so that a
+  signer can CHOOSE between copy-fidelity and rewrite-survival,
+  and a verifier can SEE which one it was given.
+
+  A verifier SHOULD therefore treat an L3b failure as evidence
+  about the document, and SHOULD attempt the documented recovery
+  before concluding tampering: re-extract with a different
+  extractor, and inspect whether visible text is intact while
+  extraction is not.
+
 10.  QR Encoding Considerations
 
   * Error correction level Q (approximately 25% damage tolerance)
