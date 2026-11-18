@@ -120,7 +120,7 @@ point that reads attacker-controlled bytes refuses instead of crashing.
   reverted, not merely green with it in place.
 - The self-consistent-forgery property is now pinned: an attacker can build
   an envelope that passes L1, and our anchor directory must refuse it.
-- Suite: 64 to 355 passing (1 skipped, pre-existing). Coverage 82% to 94%.
+- Suite: 64 to 369 passing (1 skipped, pre-existing). Coverage 82% to 94%.
 
 ### Known gaps (documented, deliberately not repaired)
 
